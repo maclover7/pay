@@ -2,15 +2,23 @@ const request = require('request-promise');
 const cheerio = require('cheerio');
 const xl = require('excel4node');
 
-// News only for now
-const deskWordpressCategory = 31;
-const deskName = 'News';
 const now = new Date();
 const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-const getPosts = () => {
+const processDesk = ({ categoryId, name }) => {
+  return getPosts(categoryId)
+    .then(mapPostsToWriters)
+    .then(calculatePays)
+    .then(savePays.bind(null, name))
+    .then(() => {
+      console.log(`Done - ${name}`);
+      return Promise.resolve();
+    });
+};
+
+const getPosts = (categoryId) => {
   return request({
-    url: `https://pittnews.com/wp-json/wp/v2/posts?categories=${deskWordpressCategory}&per_page=100`,
+    url: `https://pittnews.com/wp-json/wp/v2/posts?categories=${categoryId}&per_page=100`,
     json: true
   })
   .then((posts) => {
@@ -81,7 +89,7 @@ const calculatePays = (writers) => {
   return Promise.resolve(writers);
 };
 
-const savePays = (writers) => {
+const savePays = (name, writers) => {
   const workbook = new xl.Workbook();
 
   Object.keys(writers).forEach((writer) => {
@@ -124,12 +132,16 @@ const savePays = (writers) => {
   });
 
   const month = startOfLastMonth.toLocaleString('en-us', { month: 'long' });
-  workbook.write(`Pays-${month}-${deskName}.xlsx`);
+  workbook.write(`Pays-${month}-${name}.xlsx`);
 };
 
-getPosts()
-  .then(mapPostsToWriters)
-  .then(calculatePays)
-  .then(savePays)
-  .then(() => { console.log('Done!'); })
+const desks = [
+  { categoryId: 31, name: 'News' },
+  //{ categoryId: 52, name: 'Opinions' },
+  //{ categoryId: 33, name: 'Culture' },
+  //{ categoryId: 24, name: 'Sports' },
+];
+
+Promise.all(desks.map(processDesk))
+  .then(() => console.log('All Done!'))
   .catch(console.log);
