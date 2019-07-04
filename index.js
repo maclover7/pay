@@ -2,8 +2,9 @@ const request = require('request-promise');
 const cheerio = require('cheerio');
 const xl = require('excel4node');
 
-const now = new Date();
-const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+const [month, year] = process.argv[2].split('-');
+const startDate = new Date(year, Number(month) - 1, 1);
+const endDate = new Date(year, month, 0);
 
 const processDesk = ({ categoryId, name }) => {
   return getPosts(categoryId)
@@ -23,7 +24,8 @@ const getPosts = (categoryId) => {
   })
   .then((posts) => {
     const validPosts = posts.filter((post) => {
-      return new Date(post.date) > startOfLastMonth;
+      const postDate = new Date(post.date);
+      return postDate > startDate && postDate < endDate;
     });
 
     return Promise.resolve(validPosts);
@@ -55,10 +57,13 @@ const mapPostsToWriters = (posts) => {
 
 const writerJobTitles = {
   'Jon Moss': 'News Editor',
-  'Neena Hagen': 'Senior Staff Writer'
+  'Neena Hagen': 'Senior Staff Writer',
+  'Janine Faust': 'Editor-in-chief'
 };
 
 const getPayRate = (writer, jobTitle) => {
+  jobTitle = jobTitle.trim();
+
   if (['Editor-in-chief', 'News Editor', 'For The Pitt News'].includes(jobTitle)) {
     return 0;
   } else if (['Staff Writer'].includes(jobTitle)) {
@@ -131,7 +136,7 @@ const savePays = (name, writers) => {
     worksheet.cell(rowCounter++, 4).number(totalPay).style(style);
   });
 
-  const month = startOfLastMonth.toLocaleString('en-us', { month: 'long' });
+  const month = startDate.toLocaleString('en-us', { month: 'long' });
   workbook.write(`Pays-${month}-${name}.xlsx`);
 };
 
