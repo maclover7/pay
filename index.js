@@ -3,7 +3,7 @@ const cheerio = require('cheerio');
 const xl = require('excel4node');
 
 const [month, year] = process.argv[2].split('-');
-const startDate = new Date(year, Number(month) - 1, 1);
+const startDate = new Date(year, Number(month) - 1, 3);
 const endDate = new Date(year, month, 0);
 
 const processDesk = ({ categoryId, name }) => {
@@ -43,11 +43,16 @@ const mapPostsToWriters = (posts) => {
         writers[writer] = [];
       }
 
+      var jobTitle = post.custom_fields.jobtitle && post.custom_fields.jobtitle[0];
+      if (writer === 'News Editors') {
+        jobTitle = '';
+      }
+
       writers[writer].push({
         date: new Date(post.date).toLocaleDateString(),
         headline: post.title.rendered,
         characters: $('div#content').text().length - 1,
-        jobTitle: post.custom_fields.jobtitle.join('')
+        jobTitle
       });
     });
   });
@@ -57,27 +62,31 @@ const mapPostsToWriters = (posts) => {
 
 const writerJobTitles = {
   'Jon Moss': 'News Editor',
+  'Lucy Li': 'For The Pitt News',
+  'Rebecca Johnson': 'Senior Staff Writer',
+  'Caroline Bourque': 'Managing Editor',
+  'Elise Lavallee': 'Contributing Editor',
+  'Janine Faust': 'Editor-in-chief',
+  'Benjamin Nigrosh': 'Assistant News Editor',
   'Neena Hagen': 'Senior Staff Writer',
-  'Janine Faust': 'Editor-in-chief'
+  'Emily Wolfe': 'Digital Manager',
 };
 
 const getPayRate = (writer, jobTitle) => {
   jobTitle = jobTitle.trim();
 
-  if (['Editor-in-chief', 'News Editor', 'For The Pitt News'].includes(jobTitle)) {
-    return 0;
-  } else if (['Staff Writer'].includes(jobTitle)) {
+  if (['Staff Writer'].includes(jobTitle)) {
     return 0.0025;
   } else if (['Senior Staff Writers', 'Senior Staff Writer', 'Contributing Editor'].includes(jobTitle)) {
     return 0.0035;
-  }
-
-  if (jobTitle === 'The Pitt News Staff') {
+  } else if (jobTitle === 'The Pitt News Staff') {
     if (!writerJobTitles[writer]) {
       throw new Error(`Need to define job title for writer: ${writer}`);
     } else {
       return getPayRate(writer, writerJobTitles[writer]);
     }
+  } else {
+    return 0;
   }
 
   throw new Error(`Unknown job title: ${jobTitle}`);
@@ -119,12 +128,15 @@ const savePays = (name, writers) => {
     worksheet.column(3).setWidth(15);
     worksheet.column(4).setWidth(15);
 
-    worksheet.cell(1, 1).string('Date').style(style);
-    worksheet.cell(1, 2).string('Headline').style(style);
-    worksheet.cell(1, 3).string('Characters').style(style);
-    worksheet.cell(1, 4).string('Pay').style(style);
+    worksheet.cell(1, 1).string('News Pays').style(style);
+    worksheet.cell(1, 2).string(writer).style(style);
 
-    var rowCounter = 2;
+    worksheet.cell(2, 1).string('Date').style(style);
+    worksheet.cell(2, 2).string('Headline').style(style);
+    worksheet.cell(2, 3).string('Characters').style(style);
+    worksheet.cell(2, 4).string('Pay').style(style);
+
+    var rowCounter = 3;
     writers[writer].forEach((post) => {
       const postRow = rowCounter++;
       worksheet.cell(postRow, 1).string(post.date).style(style);
